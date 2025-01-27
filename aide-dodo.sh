@@ -10,14 +10,18 @@ currentVolume="$(getCurrentVolume)"
 Help()
 {
    # Display Help
-   echo "Add description of the script functions here."
+   echo "Ce script bash réduit progressivement le volume pour aider à"
+   echo "s'endormir devant une vidéo."
+   echo "Par défaut, il attendra 10 minutes avant de lancer la baisse"
+   echo "puis diminuera progressivement le volume pendant 25 minutes."
+   echo "Ça permet de coller à une durée d'épisode de 40 minutes."
    echo
-echo "Syntax: scriptTemplate [-h|d|D|p]"
+echo "Syntax: aide-dodo [-h|w|d|s] [--help|waiting|delay|steps]"
    echo "options:"
-   echo "h     Print this Help."
-   echo "a X   Set le delai avant de commencer à X minutes"
-   echo "d X   Set la durée de diminution à X minutes"
-   echo "p X   Set le nombre de diminutions"
+   echo "-h|--help       Print this Help."
+   echo "-w|--waiting X  Set le delai avant de commencer à X minutes"
+   echo "-d|--delay X    Set la durée de diminution à X minutes"
+   echo "-s|--steps X    Set le nombre de diminutions"
    echo
 }
 
@@ -34,21 +38,47 @@ nombreDeBaisse=25
 ############################################################
 # Process the input options. Add options as needed.        #
 ############################################################
-# Get the options
-while getopts ":hd:a:p:" option; do
-   case $option in
-      h) # display Help
+TEMP=$(getopt -o 'hw:d:s:' --long 'help,waiting:,delay:,steps:' -n 'aide-dodo' -- "$@")
+
+# getopt a planté
+if [ $? -ne 0 ]; then
+	echo 'Erreur dans la gestion des options' >&2
+	Help
+	exit 1
+fi
+
+eval set -- "$TEMP"
+unset TEMP
+
+while true; do
+   case "$1" in
+      '-h'|'--help') # display Help
          Help
-         exit;;
-      a)
-	 attenteInitiale="$(( $OPTARG * 60 ))";;
-      p) 
-	 nombreDeBaisse=$OPTARG;;
-      d)
-	 dureeDeBaisse="$(( $OPTARG * 60 ))";;
-     \?) # Invalid option
-         echo "Error: Invalid option"
-         exit;;
+         exit 0
+	;;
+      '-w'|'--waiting')
+	 attenteInitiale="$(( $2 * 60 ))"
+	 shift 2
+	 continue
+	;;
+      '-s'|'--steps') 
+	 nombreDeBaisse=$2
+	 shift 2
+	 continue
+	;;
+      '-d'|'--delay')
+	 dureeDeBaisse="$(( $2 * 60 ))"
+	 shift 2
+	 continue
+	;;
+      '--')
+         shift
+	 break
+	;;
+      *)
+	 echo "internal error!" >&2
+         exit 1
+	;;
    esac
 done
 
@@ -63,6 +93,11 @@ while [ $currentVolume -gt 0 ];
 do
 	currentVolume="$(( $currentVolume - $valeurDeBaisse ))"
 	amixer -q set Master ${currentVolume}%
+	if [ $currentVolume -eq 0 ]; then
+		echo "Volume à 0"
+		echo "Bonne nuit !"
+		break
+	fi
 	echo "baisse a $currentVolume. Prochaine baisse dans $frequenceDeBaisse secondes"
 	sleep $frequenceDeBaisse
 	if [ $currentVolume -lt "$(getCurrentVolume)" ]; then
