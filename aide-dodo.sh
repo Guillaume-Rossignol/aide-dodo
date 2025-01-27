@@ -3,18 +3,61 @@
 getCurrentVolume () { amixer get Master|sed -nE 's/(Front.*Left.*|Mono.*)\[([0-9]*)%\].*/\2/p';}
 currentVolume="$(getCurrentVolume)"
 
+
+############################################################
+# Help                                                     #
+############################################################
+Help()
+{
+   # Display Help
+   echo "Add description of the script functions here."
+   echo
+echo "Syntax: scriptTemplate [-h|d|D|p]"
+   echo "options:"
+   echo "h     Print this Help."
+   echo "a X   Set le delai avant de commencer à X minutes"
+   echo "d X   Set la durée de diminution à X minutes"
+   echo "p X   Set le nombre de diminutions"
+   echo
+}
+
+############################################################
+############################################################
+# Main program                                             #
+############################################################
+############################################################
+
 attenteInitiale=600 #On attend dix minutes avant de commencer à baisser le son
 dureeDeBaisse=1500  #On baisse le volume pendant 25 minutes
 nombreDeBaisse=25
 
-#attenteInitiale=1
-#dureeDeBaisse=60
-#nombreDeBaisse=10
+############################################################
+# Process the input options. Add options as needed.        #
+############################################################
+# Get the options
+while getopts ":hd:a:p:" option; do
+   case $option in
+      h) # display Help
+         Help
+         exit;;
+      a)
+	 attenteInitiale="$(( $OPTARG * 60 ))";;
+      p) 
+	 nombreDeBaisse=$OPTARG;;
+      d)
+	 dureeDeBaisse="$(( $OPTARG * 60 ))";;
+     \?) # Invalid option
+         echo "Error: Invalid option"
+         exit;;
+   esac
+done
 
 frequenceDeBaisse="$(( $dureeDeBaisse / $nombreDeBaisse ))"
 valeurDeBaisse="$(( $currentVolume / $nombreDeBaisse ))"
-
-echo "$currentVolume";exit 0;
+if [ $valeurDeBaisse -lt 1 ]; then
+	valeurDeBaisse=1
+fi
+echo "Valeur de baisse $valeurDeBaisse"
 sleep $attenteInitiale
 while [ $currentVolume -gt 0 ];
 do
